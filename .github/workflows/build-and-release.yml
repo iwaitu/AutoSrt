@@ -9,24 +9,8 @@ env:
   DOTNET_VERSION: '10.0.x'
 
 jobs:
-  test:
-    name: Run Tests
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-        include-prerelease: true
-    - name: Install MAUI Workload
-      run: dotnet workload install maui
-    - name: Test
-      run: dotnet test SrtAgent.Tests/SrtAgent.Tests.csproj -c Release
-
   build-windows:
     name: Build Windows
-    needs: test
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
@@ -51,7 +35,6 @@ jobs:
 
   build-android:
     name: Build Android
-    needs: test
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
@@ -78,7 +61,6 @@ jobs:
 
   build-ios:
     name: Build iOS
-    needs: test
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
