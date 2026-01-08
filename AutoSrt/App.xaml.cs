@@ -11,7 +11,18 @@ namespace AutoSrt
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new AppShell());
+            var window = new Window(new AppShell())
+            {
+                Title = "AutoSrt Agent",
+                Width = 800,
+                Height = 1000,
+                MinimumWidth = 600,
+                MaximumWidth = 800,
+                MinimumHeight = 800,
+                MaximumHeight = 1000
+            };
+
+            return window;
         }
     }
 }
