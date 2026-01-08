@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoSrt</title>
+    <style>
+        :root {
+            --primary-color: #512BD4;
+            --primary-hover: #4020a8;
+            --bg-color: #f3f3f3;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+            --log-bg: #1e1e1e;
+            --log-text: #00ff00;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #555;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: #666;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .video-select-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-path {
+            flex-grow: 1;
+            font-family: monospace;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            color: #555;
+            border: 1px dashed var(--border-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-container {
+            background-color: var(--log-bg);
+            color: var(--log-text);
+            padding: 16px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>AutoSrt Agent</h1>
+
+        <!-- Configuration -->
+        <div class="card">
+            <div class="section-title">LLM 配置</div>
+            
+            <div class="form-group">
+                <label for="endpoint">Endpoint</label>
+                <input type="text" id="endpoint" class="form-control" placeholder="http://localhost:8000/v1/{1}" value="http://localhost:8000/v1/{1}">
+            </div>
+            
+            <div class="form-group">
+                <label for="apiKey">API Key</label>
+                <input type="password" id="apiKey" class="form-control" placeholder="VLLM_API_KEY">
+            </div>
+            
+            <div class="form-group">
+                <label for="model">Model</label>
+                <input type="text" id="model" class="form-control" placeholder="qwen3-next-80b-a3b-instruct" value="qwen3-next-80b-a3b-instruct">
+            </div>
+        </div>
+
+        <!-- Video Selection -->
+        <div class="card">
+            <div class="section-title">视频处理</div>
+            
+            <div class="video-select-row">
+                <button class="btn" onclick="selectVideo()">选择视频</button>
+                <div class="file-path" id="selectedVideoPath">未选择文件</div>
+            </div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn" id="runButton" onclick="startProcess()" style="width: 100%;">提取并翻译字幕 (中文)</button>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="card" style="padding: 0; overflow: hidden; background: transparent;">
+            <div class="log-container" id="logContainer">
+                <div class="log-entry">等待操作...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectVideo() {
+            window.location.href = 'autosrt://pickVideo';
+        }
+
+        function setVideoPath(path) {
+            document.getElementById('selectedVideoPath').innerText = path || '未选择文件';
+        }
+
+        function startProcess() {
+            const endpoint = document.getElementById('endpoint').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const model = document.getElementById('model').value;
+            
+            // Build a JSON object to pass securely (or robustly)
+            const payload = JSON.stringify({
+                endpoint: endpoint,
+                apiKey: apiKey,
+                model: model
+            });
+
+            // Use encodeURIComponent to ensure special chars don't break the URI
+            window.location.href = 'autosrt://run?payload=' + encodeURIComponent(payload);
+        }
+
+        function setProcessing(isProcessing) {
+            const btn = document.getElementById('runButton');
+            if (isProcessing) {
+                btn.disabled = true;
+                btn.innerText = '处理中...';
+            } else {
+                btn.disabled = false;
+                btn.innerText = '提取并翻译字幕 (中文)';
+            }
+        }
+
+        function appendLog(message) {
+            const container = document.getElementById('logContainer');
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerText = message;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

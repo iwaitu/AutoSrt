@@ -1,8 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- NOTE: Let .NET MAUI manage WebView2 on Windows. Custom WebView2 WinRT/WPF toggles can introduce
+		 runtime assembly resolution issues (e.g., Microsoft.Web.WebView2.Wpf) and crash on startup. -->
 
 	<PropertyGroup Label="Globals">
 	  <WebView2UseWinRT>False</WebView2UseWinRT>
-	  <WebView2EnableCsWinRTProjection>False</WebView2EnableCsWinRTProjection>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -64,7 +66,13 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.1" />
+		<PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3650.58" />
+		<PackageReference Include="WebView2.Runtime.X64" Version="143.0.3650.96" />
 	</ItemGroup>
+
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
 
 	<ItemGroup>
 	  <ProjectReference Include="..\SrtAgent\SrtAgent.csproj" />

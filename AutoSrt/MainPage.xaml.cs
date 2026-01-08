@@ -1,8 +1,9 @@
-﻿using AutoSrt.Services;
+using AutoSrt.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using SrtAgent;
 using System.Text;
+using System.Text.Json;
 
 namespace AutoSrt;
 
@@ -15,26 +16,162 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
         BindingContext = _logger;
+        _logger.LogAdded += OnLogAdded;
+        LoadHtml();
     }
 
-    private async void OnPickVideoClicked(object? sender, EventArgs e)
+    private async void LoadHtml()
     {
         try
         {
-            var results = await FilePicker.Default.PickAsync(new PickOptions
+            using var stream = await FileSystem.OpenAppPackageFileAsync("index.html");
+            using var reader = new StreamReader(stream);
+            var html = await reader.ReadToEndAsync();
+            MainWebView.Source = new HtmlWebViewSource { Html = html };
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to load UI: {ex.Message}", "OK");
+        }
+    }
+
+    private void OnLogAdded(string message)
+    {
+        // Simple JS escaping
+        var jsMessage = message.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "");
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            try
             {
-                PickerTitle = "选择视频文件",
-                FileTypes = FilePickerFileType.Videos
+                await MainWebView.EvaluateJavaScriptAsync($"appendLog('{jsMessage}')");
+            }
+            catch { /* Ignore JS errors during navigation/loading */ }
+        });
+    }
+
+    private async void OnWebViewNavigating(object sender, WebNavigatingEventArgs e)
+    {
+        if (e.Url.StartsWith("autosrt://"))
+        {
+            e.Cancel = true;
+            var uri = new Uri(e.Url);
+            var host = uri.Host; // action name
+
+            if (host.ToLower() == "pickvideo")
+            {
+                // Defer to next UI cycle to ensure we're fully out of WebView navigation context
+                Dispatcher.Dispatch(async () =>
+                {
+                    await Task.Delay(50); // Small delay to ensure WebView navigation is fully settled
+                    await PickVideoAsync();
+                });
+            }
+            else if (host == "run")
+            {
+                // autosrt://run?payload=...
+                // Manual parsing to avoid System.Web dependency
+                var queryIndex = e.Url.IndexOf("?payload=");
+                if (queryIndex > 0)
+                {
+                    var payloadEncoded = e.Url.Substring(queryIndex + 9);
+                    var payloadJson = Uri.UnescapeDataString(payloadEncoded);
+                    if (!string.IsNullOrEmpty(payloadJson))
+                    {
+                        Dispatcher.Dispatch(async () =>
+                        {
+                            await Task.Delay(50);
+                            await RunProcessAsync(payloadJson);
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task PickVideoAsync()
+    {
+        try
+        {
+            _logger.Info("准备打开文件选择器...");
+
+            // Force using WinUI FileOpenPicker on Windows (FilePicker.Default often fails in WebView context)
+            var fullPath = await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+#if WINDOWS
+                try
+                {
+                    _logger.Info("使用 WinUI FileOpenPicker...");
+                    
+                    var picker = new Windows.Storage.Pickers.FileOpenPicker
+                    {
+                        ViewMode = Windows.Storage.Pickers.PickerViewMode.List,
+                        SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary
+                    };
+                    
+                    picker.FileTypeFilter.Add(".mp4");
+                    picker.FileTypeFilter.Add(".mkv");
+                    picker.FileTypeFilter.Add(".avi");
+                    picker.FileTypeFilter.Add(".mov");
+                    picker.FileTypeFilter.Add(".wmv");
+                    picker.FileTypeFilter.Add(".flv");
+                    picker.FileTypeFilter.Add(".m4v");
+                    picker.FileTypeFilter.Add(".webm");
+
+                    // Get HWND for window initialization
+                    var window = Microsoft.Maui.Controls.Application.Current?.Windows?.FirstOrDefault();
+                    if (window?.Handler?.PlatformView is Microsoft.UI.Xaml.Window nativeWindow)
+                    {
+                        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(nativeWindow);
+                        _logger.Info($"初始化 FileOpenPicker HWND: {hwnd}");
+                        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                    }
+                    else
+                    {
+                        _logger.Warn("无法获取窗口句柄，FileOpenPicker 可能无法正常显示");
+                    }
+
+                    _logger.Info("调用 PickSingleFileAsync...");
+                    var file = await picker.PickSingleFileAsync();
+                    
+                    if (file != null)
+                    {
+                        _logger.Info($"FileOpenPicker 返回: {file.Path}");
+                        return file.Path;
+                    }
+                    else
+                    {
+                        _logger.Info("FileOpenPicker 返回 null (用户取消)");
+                        return null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "WinUI FileOpenPicker 失败");
+                    return null;
+                }
+#else
+                var results = await FilePicker.Default.PickAsync(new PickOptions
+                {
+                    PickerTitle = "选择视频文件",
+                    FileTypes = FilePickerFileType.Videos
+                });
+
+                return results?.FullPath;
+#endif
             });
 
-            if (results is null)
+            if (string.IsNullOrWhiteSpace(fullPath))
             {
                 _logger.Info("未选择文件。");
                 return;
             }
 
-            _selectedVideoPath = results.FullPath;
-            SelectedVideoLabel.Text = _selectedVideoPath;
+            _selectedVideoPath = fullPath;
+
+            // Update UI
+            var jsPath = _selectedVideoPath.Replace("\\", "\\\\").Replace("'", "\\'");
+            await MainWebView.EvaluateJavaScriptAsync($"setVideoPath('{jsPath}')");
+
             _logger.Info($"已选择: {_selectedVideoPath}");
         }
         catch (Exception ex)
@@ -44,17 +181,27 @@ public partial class MainPage : ContentPage
         }
     }
 
-    private async void OnRunClicked(object? sender, EventArgs e)
+    private async Task RunProcessAsync(string payloadJson)
     {
+        string endpoint = "", apiKey = "", model = "";
+        try
+        {
+            var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.TryGetProperty("endpoint", out var epProp)) endpoint = epProp.GetString()?.Trim() ?? "";
+            if (doc.RootElement.TryGetProperty("apiKey", out var akProp)) apiKey = akProp.GetString()?.Trim() ?? "";
+            if (doc.RootElement.TryGetProperty("model", out var mdProp)) model = mdProp.GetString()?.Trim() ?? "";
+        }
+        catch
+        {
+            _logger.Error("无法解析配置参数。");
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_selectedVideoPath))
         {
             await DisplayAlert("提示", "请先选择视频文件。", "OK");
             return;
         }
-
-        var endpoint = EndpointEntry.Text?.Trim();
-        var apiKey = ApiKeyEntry.Text?.Trim();
-        var model = ModelEntry.Text?.Trim();
 
         if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(model))
         {
@@ -62,7 +209,7 @@ public partial class MainPage : ContentPage
             return;
         }
 
-        RunButton.IsEnabled = false;
+        await SetUiProcessing(true);
         _logger.Clear();
 
         try
@@ -127,8 +274,7 @@ public partial class MainPage : ContentPage
                     progress: (percent, stage) =>
                     {
                         // Ensure UI-safe updates.
-                        MainThread.BeginInvokeOnMainThread(() =>
-                            _logger.Info($"翻译进度: {percent}%{(string.IsNullOrWhiteSpace(stage) ? string.Empty : $" ({stage})")}"));
+                         _logger.Info($"翻译进度: {percent}%{(string.IsNullOrWhiteSpace(stage) ? string.Empty : $" ({stage})")}");
                     });
 
                 _logger.Info($"翻译完成，长度: {outputSrt.Length} chars");
@@ -147,8 +293,13 @@ public partial class MainPage : ContentPage
         }
         finally
         {
-            RunButton.IsEnabled = true;
+            await SetUiProcessing(false);
         }
+    }
+
+    private async Task SetUiProcessing(bool processing)
+    {
+        await MainWebView.EvaluateJavaScriptAsync($"setProcessing({(processing ? "true" : "false")})");
     }
 
     private static string GetOutputSrtPath(string videoPath)

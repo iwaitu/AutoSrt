@@ -4,44 +4,6 @@
              x:Class="AutoSrt.MainPage"
              Title="AutoSrt">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="16" Spacing="12">
-
-            <Label Text="VLLM ChatClient" FontAttributes="Bold" FontSize="18" />
-
-            <Label Text="Endpoint" />
-            <Entry x:Name="EndpointEntry"
-                   Placeholder="http://localhost:8000/v1/{1}"
-                   Text="http://localhost:8000/v1/{1}" />
-
-            <Label Text="API Key" />
-            <Entry x:Name="ApiKeyEntry"
-                   Placeholder="VLLM_API_KEY"
-                   IsPassword="True" />
-
-            <Label Text="Model" />
-            <Entry x:Name="ModelEntry"
-                   Placeholder="qwen3-next-80b-a3b-instruct"
-                   Text="qwen3-next-80b-a3b-instruct" />
-
-            <BoxView HeightRequest="1" BackgroundColor="#DDDDDD" />
-
-            <Label Text="Video" FontAttributes="Bold" FontSize="18" />
-            <HorizontalStackLayout Spacing="8">
-                <Button Text="选择视频" Clicked="OnPickVideoClicked" />
-                <Label x:Name="SelectedVideoLabel" Text="未选择" VerticalOptions="Center" LineBreakMode="TailTruncation" />
-            </HorizontalStackLayout>
-
-            <Button x:Name="RunButton" Text="提取并翻译字幕（中文）" Clicked="OnRunClicked" />
-
-            <BoxView HeightRequest="1" BackgroundColor="#DDDDDD" />
-
-            <Label Text="日志" FontAttributes="Bold" FontSize="18" />
-            <Editor Text="{Binding LogText}"
-                    IsReadOnly="True"
-                    AutoSize="TextChanges"
-                    MinimumHeightRequest="200" />
-        </VerticalStackLayout>
-    </ScrollView>
+    <WebView x:Name="MainWebView" Navigating="OnWebViewNavigating" />
 
 </ContentPage>

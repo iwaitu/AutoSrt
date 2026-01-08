@@ -22,6 +22,7 @@ public sealed class UiLogger : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<string>? LogAdded;
 
     public void Clear()
     {
@@ -42,6 +43,7 @@ public sealed class UiLogger : INotifyPropertyChanged
         var line = $"[{DateTime.Now:HH:mm:ss}] {level}: {message}";
         _sb.AppendLine(line);
         LogText = _sb.ToString();
+        LogAdded?.Invoke(line);
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
