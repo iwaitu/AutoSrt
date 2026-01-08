@@ -1,6 +1,7 @@
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.AI.VllmChatClient.GptOss;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.AI;
 using Xabe.FFmpeg;
 
 namespace SrtAgent;
@@ -87,51 +88,55 @@ public sealed class SrtExportor
             new(ChatRole.User, sb.ToString())
         };
 
-        var response = await chatClient.GetResponseAsync(messages, new ChatOptions
-        {
-            Temperature = 0.0f,
-            MaxOutputTokens = 400
-        }, cancellationToken).ConfigureAwait(false);
-
-        var json = ExtractJsonObject(response.Text);
-        if (json is null)
-        {
-            var fallback = streams[0];
-            return new SubtitleTrackChoiceResult(false, "translate", fallback.Index, "LLM response not JSON; fallback to first stream.");
-        }
-
         try
         {
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
+            var response = await GetResponseAsync(chatClient, messages, cancellationToken).ConfigureAwait(false);
 
-            var exists = root.TryGetProperty("targetLanguageAlreadyExists", out var e) && e.ValueKind == JsonValueKind.True;
-            var action = root.TryGetProperty("action", out var a) && a.ValueKind == JsonValueKind.String
-                ? a.GetString() ?? "translate"
-                : "translate";
-            var selected = root.TryGetProperty("selectedIndex", out var s) && s.ValueKind == JsonValueKind.Number
-                ? s.GetInt32()
-                : streams[0].Index;
-            var reason = root.TryGetProperty("reason", out var r) && r.ValueKind == JsonValueKind.String
-                ? r.GetString()
-                : null;
-
-            if (!streams.Any(x => x.Index == selected))
+            var json = ExtractJsonObject(response.Text);
+            if (json is null)
             {
-                selected = streams[0].Index;
-                reason = string.IsNullOrWhiteSpace(reason) ? "LLM did not return a valid index; fallback to first stream." : reason;
+                var fallback = streams[0];
+                return new SubtitleTrackChoiceResult(false, "translate", fallback.Index, "LLM response not JSON; fallback to first stream.");
             }
 
-            action = string.Equals(action, "use_existing_target", StringComparison.OrdinalIgnoreCase)
-                ? "use_existing_target"
-                : "translate";
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
 
-            return new SubtitleTrackChoiceResult(exists, action, selected, reason);
+                var exists = root.TryGetProperty("targetLanguageAlreadyExists", out var e) && e.ValueKind == JsonValueKind.True;
+                var action = root.TryGetProperty("action", out var a) && a.ValueKind == JsonValueKind.String
+                    ? a.GetString() ?? "translate"
+                    : "translate";
+                var selected = root.TryGetProperty("selectedIndex", out var s) && s.ValueKind == JsonValueKind.Number
+                    ? s.GetInt32()
+                    : streams[0].Index;
+                var reason = root.TryGetProperty("reason", out var r) && r.ValueKind == JsonValueKind.String
+                    ? r.GetString()
+                    : null;
+
+                if (!streams.Any(x => x.Index == selected))
+                {
+                    selected = streams[0].Index;
+                    reason = string.IsNullOrWhiteSpace(reason) ? "LLM did not return a valid index; fallback to first stream." : reason;
+                }
+
+                action = string.Equals(action, "use_existing_target", StringComparison.OrdinalIgnoreCase)
+                    ? "use_existing_target"
+                    : "translate";
+
+                return new SubtitleTrackChoiceResult(exists, action, selected, reason);
+            }
+            catch
+            {
+                var fallback = streams[0];
+                return new SubtitleTrackChoiceResult(false, "translate", fallback.Index, "LLM JSON parse failed; fallback to first stream.");
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            var fallback = streams[0];
-            return new SubtitleTrackChoiceResult(false, "translate", fallback.Index, "LLM JSON parse failed; fallback to first stream.");
+            // Surface extra context for UI logs.
+            throw new InvalidOperationException($"Vllm error while choosing subtitle track. client={chatClient.GetType().Name}, targetLanguage={targetLanguage}", ex);
         }
     }
 
@@ -205,5 +210,28 @@ public sealed class SrtExportor
         {
             try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
         }
+    }
+
+    private static Task<ChatResponse> GetResponseAsync(IChatClient chatClient, IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken)
+    {
+        // Default: use Microsoft.Extensions.AI ChatOptions.
+        // For `VllmGptOssChatClient`, use `GptOssChatOptions` (known working pattern from integration test).
+        var clientTypeName = chatClient.GetType().Name;
+        if (string.Equals(clientTypeName, "VllmGptOssChatClient", StringComparison.Ordinal))
+        {
+            var gptOssOptions = new GptOssChatOptions
+            {
+                ReasoningLevel = GptOssReasoningLevel.Low,
+                Temperature = 0.5f
+            };
+
+            return chatClient.GetResponseAsync(messages, gptOssOptions, cancellationToken);
+        }
+
+        return chatClient.GetResponseAsync(messages, new ChatOptions
+        {
+            Temperature = 0.0f,
+            MaxOutputTokens = 400
+        }, cancellationToken);
     }
 }

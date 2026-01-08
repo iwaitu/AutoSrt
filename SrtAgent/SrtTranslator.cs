@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.AI.VllmChatClient.GptOss;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.AI;
 
 namespace SrtAgent;
 
@@ -64,7 +65,8 @@ public sealed class SrtTranslator
 
         var batchSize = Math.Max(1, options.BatchSize);
         var totalBatches = (int)Math.Ceiling((double)subtitles.Count / batchSize);
-
+        long allInputTokens = 0;
+        long allOutputTokens = 0;
         progress?.Invoke(0, "start");
         var lastReported = 0;
 
@@ -94,14 +96,10 @@ public sealed class SrtTranslator
                         new(ChatRole.User, prompt)
                     };
 
-                    var chatOptions = new ChatOptions
-                    {
-                        Temperature = options.Temperature,
-                        MaxOutputTokens = options.MaxOutputTokens
-                    };
-
-                    var response = await _chatClient.GetResponseAsync(messages, chatOptions, cancellationToken).ConfigureAwait(false);
+                    var response = await GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
                     var translatedText = response.Text;
+                    allOutputTokens += response.Usage?.OutputTokenCount ?? 0;
+                    allInputTokens += response.Usage?.InputTokenCount ?? 0;
 
                     translatedBatch = ParseTranslationResult(translatedText, batch);
 
@@ -160,7 +158,34 @@ public sealed class SrtTranslator
 
         progress?.Invoke(100, "done");
 
+        _logger.LogInformation($"Token usage total: input={allInputTokens}, output={allOutputTokens}");
+
         return translatedSubtitles;
+    }
+
+    private Task<ChatResponse> GetResponseAsync(IReadOnlyList<ChatMessage> messages, TranslationOptions options, CancellationToken cancellationToken)
+    {
+        // Default: use Microsoft.Extensions.AI ChatOptions.
+        // For `VllmGptOssChatClient`, use `GptOssChatOptions` (known working pattern from integration test).
+        var clientTypeName = _chatClient.GetType().Name;
+        if (string.Equals(clientTypeName, "VllmGptOssChatClient", StringComparison.Ordinal))
+        {
+            var gptOssOptions = new GptOssChatOptions
+            {
+                ReasoningLevel = GptOssReasoningLevel.Low,
+                Temperature = 0.5f
+            };
+
+            return _chatClient.GetResponseAsync(messages, gptOssOptions, cancellationToken);
+        }
+
+        var chatOptions = new ChatOptions
+        {
+            Temperature = options.Temperature,
+            MaxOutputTokens = options.MaxOutputTokens
+        };
+
+        return _chatClient.GetResponseAsync(messages, chatOptions, cancellationToken);
     }
 
     private sealed record SrtTranslationItem(int Index, string Text);

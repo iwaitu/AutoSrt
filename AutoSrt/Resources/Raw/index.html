@@ -83,6 +83,18 @@
             </div>
         </header>
 
+        <!-- Banner -->
+        <div class="glass-panel rounded-xl p-4 border border-indigo-500/20">
+            <div class="flex items-start gap-3">
+                <div class="mt-0.5 text-indigo-400">
+                    <i class="fa-solid fa-circle-info"></i>
+                </div>
+                <div class="text-sm leading-relaxed text-gray-300">
+                    <span class="font-semibold text-white">强烈建议使用 qwen3-next-80B-A3B</span>，获得速度和性能的最佳平衡，gpt-oss-120b 可能会消耗更多时间。90分钟电影的字幕 qwen3-next-80B-A3B 模型耗时 7-9 分钟，而 gpt-oss-120b 则会消耗 5 倍的时间，两者消耗的费用大概是 gpt-oss-120b ~0.1 美元 / qwen3-next-80b-a3b ~0.05 美元。
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             <!-- Left Column: Configuration -->
@@ -104,8 +116,8 @@
                                 </div>
                                 <input type="text" id="endpoint" 
                                     class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 p-2.5 transition-all outline-none placeholder-gray-700"
-                                    placeholder="http://localhost:8000/v1/{1}" 
-                                    value="http://localhost:8000/v1/{1}">
+                                    placeholder="https://openrouter.ai/api/v1/{1}" 
+                                    value="https://openrouter.ai/api/v1/{1}">
                             </div>
                         </div>
                         
@@ -127,10 +139,34 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fa-solid fa-brain text-gray-600 text-xs"></i>
                                 </div>
-                                <input type="text" id="model" 
-                                    class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 p-2.5 transition-all outline-none placeholder-gray-700"
-                                    placeholder="model-id" 
-                                    value="qwen3-next-80b-a3b-instruct">
+                                <select id="model"
+                                    class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 pr-9 p-2.5 transition-all outline-none appearance-none">
+                                    <option value="qwen/qwen3-next-80b-a3b-instruct" selected>qwen/qwen3-next-80b-a3b-instruct</option>
+                                    <option value="openai/gpt-oss-120b">openai/gpt-oss-120b</option>
+                                    <option value="openai/gpt-oss-20b">openai/gpt-oss-20b</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-chevron-down text-gray-600 text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="group">
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 ml-1 transition-colors group-hover:text-indigo-400">Target Language</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-language text-gray-600 text-xs"></i>
+                                </div>
+                                <select id="targetLanguage"
+                                    class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 pr-9 p-2.5 transition-all outline-none appearance-none">
+                                    <option value="简体中文" selected>简体中文</option>
+                                    <option value="繁体中文">繁体中文</option>
+                                    <option value="日文">日文</option>
+                                    <option value="韩文">韩文</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-chevron-down text-gray-600 text-xs"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -217,11 +253,13 @@
             const endpoint = document.getElementById('endpoint').value;
             const apiKey = document.getElementById('apiKey').value;
             const model = document.getElementById('model').value;
+            const targetLanguage = document.getElementById('targetLanguage').value;
             
             const payload = JSON.stringify({
                 endpoint: endpoint,
                 apiKey: apiKey,
-                model: model
+                model: model,
+                targetLanguage: targetLanguage
             });
 
             window.location.href = 'autosrt://run?payload=' + encodeURIComponent(payload);
