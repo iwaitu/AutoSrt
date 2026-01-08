@@ -1,0 +1,137 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        include-prerelease: true
+    - name: Install MAUI Workload
+      run: dotnet workload install maui
+    - name: Test
+      run: dotnet test SrtAgent.Tests/SrtAgent.Tests.csproj -c Release
+
+  build-windows:
+    name: Build Windows
+    needs: test
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        include-prerelease: true
+    - name: Install MAUI Workload
+      run: dotnet workload install maui
+    - name: Publish Windows
+      run: |
+        dotnet publish AutoSrt/AutoSrt/AutoSrt.csproj -f net10.0-windows10.0.19041.0 -c Release -o ./publish/windows
+    - name: Zip Windows Artifact
+      run: |
+        Compress-Archive -Path ./publish/windows/* -DestinationPath ./AutoSrt-Windows.zip
+    - name: Upload Windows Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-app
+        path: AutoSrt-Windows.zip
+
+  build-android:
+    name: Build Android
+    needs: test
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'microsoft'
+        java-version: '17'
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        include-prerelease: true
+    - name: Install MAUI Workload
+      run: dotnet workload install maui
+    - name: Publish Android
+      run: |
+        dotnet publish AutoSrt/AutoSrt/AutoSrt.csproj -f net10.0-android -c Release -o ./publish/android
+    - name: Upload Android Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-app
+        path: ./publish/android/*.apk
+
+  build-ios:
+    name: Build iOS
+    needs: test
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        include-prerelease: true
+    - name: Install MAUI Workload
+      run: dotnet workload install maui
+    - name: Publish iOS
+      # Note: This produces an app bundle. Signing is required for a deployable IPA.
+      # If provisioning profiles and certificates are available in secrets, add them here.
+      run: |
+        dotnet publish AutoSrt/AutoSrt/AutoSrt.csproj -f net10.0-ios -c Release -o ./publish/ios
+    - name: Zip iOS Artifact
+      run: |
+        tar -czf AutoSrt-iOS.tar.gz -C ./publish/ios .
+    - name: Upload iOS Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-app
+        path: AutoSrt-iOS.tar.gz
+
+  release:
+    name: Create Release
+    needs: [build-windows, build-android, build-ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download Windows Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-app
+    - name: Download Android Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: android-app
+    - name: Download iOS Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ios-app
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Release v1.0.${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: |
+          AutoSrt-Windows.zip
+          *.apk
+          AutoSrt-iOS.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
