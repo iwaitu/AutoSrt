@@ -31,7 +31,7 @@ public partial class MainPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Error", $"Failed to load UI: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Failed to load UI: {ex.Message}", "OK");
         }
     }
 
@@ -177,7 +177,7 @@ public partial class MainPage : ContentPage
         catch (Exception ex)
         {
             _logger.Error(ex, "选择文件失败。");
-            await DisplayAlert("错误", ex.Message, "OK");
+            await DisplayAlertAsync("错误", ex.Message, "OK");
         }
     }
 
@@ -195,19 +195,19 @@ public partial class MainPage : ContentPage
         catch (Exception ex)
         {
             _logger.Error(ex, "无法解析配置参数。");
-            await DisplayAlert("错误", ex.ToString(), "OK");
+            await DisplayAlertAsync("错误", ex.ToString(), "OK");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_selectedVideoPath))
         {
-            await DisplayAlert("提示", "请先选择视频文件。", "OK");
+            await DisplayAlertAsync("提示", "请先选择视频文件。", "OK");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(model))
         {
-            await DisplayAlert("提示", "请填写 VLLM 的 Endpoint / API Key / Model。", "OK");
+            await DisplayAlertAsync("提示", "请填写 VLLM 的 Endpoint / API Key / Model。", "OK");
             return;
         }
 
@@ -225,7 +225,7 @@ public partial class MainPage : ContentPage
             var streams = await exportor.GetSubtitleStreamsAsync(_selectedVideoPath);
             if (streams.Count == 0)
             {
-                await DisplayAlert("提示", "该视频未发现内嵌字幕轨道。", "OK");
+                await DisplayAlertAsync("提示", "该视频未发现内嵌字幕轨道。", "OK");
                 return;
             }
 
@@ -285,12 +285,12 @@ public partial class MainPage : ContentPage
 
             await File.WriteAllTextAsync(outputPath, outputSrt, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
             _logger.Info($"已输出字幕: {outputPath}");
-            await DisplayAlert("完成", $"已生成 {targetLanguage} SRT:\n{outputPath}", "OK");
+            await DisplayAlertAsync("完成", $"已生成 {targetLanguage} SRT:\n{outputPath}", "OK");
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "处理失败。");
-            await DisplayAlert("错误", ex.ToString(), "OK");
+            await DisplayAlertAsync("错误", ex.ToString(), "OK");
         }
         finally
         {
@@ -317,6 +317,7 @@ public partial class MainPage : ContentPage
         {
             "简体中文" => "zh",
             "繁体中文" => "zh-Hant",
+            "English" => "en",
             "日文" => "ja",
             "韩文" => "ko",
             _ => "out"

@@ -32,16 +32,23 @@ namespace AutoSrt.WinUI
             {
                 var ex = e.Exception;
                 var details = ex is FileNotFoundException fnf
-                    ? $"{ex}\n\nFileName: {fnf.FileName}" 
+                    ? $"{ex}\n\nFileName: {fnf.FileName}"
                     : ex.ToString();
 
                 System.Diagnostics.Debug.WriteLine("[UnhandledException] " + details);
 
-                _ = Microsoft.Maui.Controls.Application.Current?.MainPage?.Dispatcher.DispatchAsync(async () =>
+                var mauiApp = Microsoft.Maui.Controls.Application.Current;
+                var page = mauiApp?.Windows?.FirstOrDefault()?.Page;
+                if (page is null)
+                {
+                    return;
+                }
+
+                _ = page.Dispatcher.DispatchAsync(async () =>
                 {
                     try
                     {
-                        await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("UnhandledException", details, "OK");
+                        await page.DisplayAlertAsync("UnhandledException", details, "OK");
                     }
                     catch
                     {

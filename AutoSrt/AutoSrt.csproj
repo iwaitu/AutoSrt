@@ -74,11 +74,12 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3650.58" />
-		<PackageReference Include="WebView2.Runtime.X64" Version="143.0.3650.96" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
-		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<!-- Reduce publish output size (framework-dependent). If you hit missing-assembly issues on startup,
+		   switch back to true. -->
+		<CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
