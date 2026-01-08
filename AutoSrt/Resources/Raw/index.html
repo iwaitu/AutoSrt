@@ -1,220 +1,216 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoSrt</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        gray: {
+                            850: '#1f2937',
+                            900: '#111827',
+                            950: '#0B0F19', // Custom darker background
+                        },
+                        primary: {
+                            500: '#6366f1', // Indigo
+                            600: '#4f46e5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --primary-color: #512BD4;
-            --primary-hover: #4020a8;
-            --bg-color: #f3f3f3;
-            --card-bg: #ffffff;
-            --text-color: #333333;
-            --border-color: #e0e0e0;
-            --log-bg: #1e1e1e;
-            --log-text: #00ff00;
-        }
-
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
+            background-color: #0B0F19; /* Fallback */
         }
-
-        .container {
-            max-width: 800px;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+        /* Custom scrollbar for log area */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
         }
-
-        h1 {
-            color: var(--primary-color);
-            margin: 0 0 10px 0;
-            font-size: 24px;
-            text-align: center;
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
         }
-
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(31, 41, 55, 0.5); 
         }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: #555;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4b5563; 
+            border-radius: 3px;
         }
-
-        .form-group {
-            margin-bottom: 16px;
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; 
         }
-
-        .form-group label {
-            display: block;
-            font-size: 14px;
-            margin-bottom: 6px;
-            color: #666;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 14px;
-            box-sizing: border-box;
-            transition: border-color 0.2s;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-
-        .btn:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .video-select-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .file-path {
-            flex-grow: 1;
-            font-family: monospace;
-            background: #f9f9f9;
-            padding: 10px;
-            border-radius: 6px;
-            color: #555;
-            border: 1px dashed var(--border-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .log-container {
-            background-color: var(--log-bg);
-            color: var(--log-text);
-            padding: 16px;
-            border-radius: 8px;
-            height: 300px;
-            overflow-y: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 12px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-        }
-
-        .log-entry {
-            margin-bottom: 4px;
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-950 text-gray-300 font-sans min-h-screen flex flex-col p-4 md:p-6 select-none">
 
-    <div class="container">
-        <h1>AutoSrt Agent</h1>
+    <div class="max-w-4xl mx-auto w-full flex flex-col gap-6">
+        
+        <!-- Header -->
+        <header class="flex items-center justify-between pb-2 border-b border-gray-800">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-closed-captioning text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">AutoSrt</h1>
+                    <p class="text-xs text-gray-500 font-medium">智能字幕生成代理</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span class="text-xs text-green-500 font-mono">SYSTEM READY</span>
+            </div>
+        </header>
 
-        <!-- Configuration -->
-        <div class="card">
-            <div class="section-title">LLM 配置</div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="form-group">
-                <label for="endpoint">Endpoint</label>
-                <input type="text" id="endpoint" class="form-control" placeholder="http://localhost:8000/v1/{1}" value="http://localhost:8000/v1/{1}">
+            <!-- Left Column: Configuration -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- LLM Settings -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center gap-2 mb-4 text-white">
+                        <i class="fa-solid fa-robot text-indigo-400"></i>
+                        <h2 class="font-semibold text-sm uppercase tracking-wider">LLM 配置</h2>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="group">
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 ml-1 transition-colors group-hover:text-indigo-400">Endpoint</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-network-wired text-gray-600 text-xs"></i>
+                                </div>
+                                <input type="text" id="endpoint" 
+                                    class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 p-2.5 transition-all outline-none placeholder-gray-700"
+                                    placeholder="http://localhost:8000/v1/{1}" 
+                                    value="http://localhost:8000/v1/{1}">
+                            </div>
+                        </div>
+                        
+                        <div class="group">
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 ml-1 transition-colors group-hover:text-indigo-400">API Key</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-key text-gray-600 text-xs"></i>
+                                </div>
+                                <input type="password" id="apiKey" 
+                                    class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 p-2.5 transition-all outline-none placeholder-gray-700"
+                                    placeholder="sk-..." >
+                            </div>
+                        </div>
+                        
+                        <div class="group">
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 ml-1 transition-colors group-hover:text-indigo-400">Model Name</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-brain text-gray-600 text-xs"></i>
+                                </div>
+                                <input type="text" id="model" 
+                                    class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 p-2.5 transition-all outline-none placeholder-gray-700"
+                                    placeholder="model-id" 
+                                    value="qwen3-next-80b-a3b-instruct">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Selection -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center gap-2 mb-4 text-white">
+                        <i class="fa-solid fa-film text-indigo-400"></i>
+                        <h2 class="font-semibold text-sm uppercase tracking-wider">媒体源</h2>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="relative group cursor-pointer" onclick="selectVideo()">
+                            <div class="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg opacity-30 group-hover:opacity-100 transition duration-300 blur-sm"></div>
+                            <div class="relative flex items-center gap-3 bg-gray-800 hover:bg-gray-750 p-3 rounded-lg border border-gray-700 transition-colors">
+                                <div class="bg-gray-700 p-2 rounded-md">
+                                    <i class="fa-solid fa-folder-open text-indigo-400"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs text-gray-400 mb-0.5">选择视频文件</p>
+                                    <p id="selectedVideoPath" class="text-sm text-gray-200 font-medium truncate">未选择文件</p>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-gray-600"></i>
+                            </div>
+                        </div>
+                        
+                        <button id="runButton" onclick="startProcess()" class="w-full group relative overflow-hidden rounded-lg bg-indigo-600 p-3 text-center font-medium text-white shadow-lg transition-all hover:bg-indigo-500 hover:shadow-indigo-500/40 focus:ring-4 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600">
+                             <span class="relative flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                <span>开始处理</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="apiKey">API Key</label>
-                <input type="password" id="apiKey" class="form-control" placeholder="VLLM_API_KEY">
+            <!-- Right Column: Logs / Terminal -->
+            <div class="lg:col-span-2 flex flex-col h-[500px] lg:h-auto glass-panel rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-gray-900/80 p-3 border-b border-gray-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-terminal text-gray-500 text-xs"></i>
+                        <span class="text-xs font-mono text-gray-400">OUTPUT LOGS</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/50"></div>
+                    </div>
+                </div>
+                
+                <div class="flex-1 bg-gray-950/50 relative">
+                    <div id="logContainer" class="absolute inset-0 p-4 font-mono text-xs overflow-y-auto custom-scrollbar space-y-2 text-gray-300">
+                        <div class="log-entry text-gray-500 italic border-l-2 border-gray-700 pl-2">
+                            等待任务开始...
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <div class="form-group">
-                <label for="model">Model</label>
-                <input type="text" id="model" class="form-control" placeholder="qwen3-next-80b-a3b-instruct" value="qwen3-next-80b-a3b-instruct">
-            </div>
-        </div>
 
-        <!-- Video Selection -->
-        <div class="card">
-            <div class="section-title">视频处理</div>
-            
-            <div class="video-select-row">
-                <button class="btn" onclick="selectVideo()">选择视频</button>
-                <div class="file-path" id="selectedVideoPath">未选择文件</div>
-            </div>
-
-            <div style="margin-top: 20px; text-align: right;">
-                <button class="btn" id="runButton" onclick="startProcess()" style="width: 100%;">提取并翻译字幕 (中文)</button>
-            </div>
-        </div>
-
-        <!-- Logs -->
-        <div class="card" style="padding: 0; overflow: hidden; background: transparent;">
-            <div class="log-container" id="logContainer">
-                <div class="log-entry">等待操作...</div>
-            </div>
         </div>
     </div>
 
+    <!-- Logic -->
     <script>
         function selectVideo() {
             window.location.href = 'autosrt://pickVideo';
         }
 
         function setVideoPath(path) {
-            document.getElementById('selectedVideoPath').innerText = path || '未选择文件';
+            const el = document.getElementById('selectedVideoPath');
+            if(path) {
+                el.innerText = path;
+                el.classList.add('text-indigo-300');
+                el.classList.remove('text-gray-200');
+            } else {
+                el.innerText = '未选择文件';
+                el.classList.add('text-gray-200');
+                el.classList.remove('text-indigo-300');
+            }
         }
 
         function startProcess() {
@@ -222,35 +218,69 @@
             const apiKey = document.getElementById('apiKey').value;
             const model = document.getElementById('model').value;
             
-            // Build a JSON object to pass securely (or robustly)
             const payload = JSON.stringify({
                 endpoint: endpoint,
                 apiKey: apiKey,
                 model: model
             });
 
-            // Use encodeURIComponent to ensure special chars don't break the URI
             window.location.href = 'autosrt://run?payload=' + encodeURIComponent(payload);
         }
 
         function setProcessing(isProcessing) {
             const btn = document.getElementById('runButton');
+            const icon = btn.querySelector('i');
+            const text = btn.querySelector('span > span:last-child');
+            
             if (isProcessing) {
                 btn.disabled = true;
-                btn.innerText = '处理中...';
+                icon.className = 'fa-solid fa-circle-notch fa-spin';
+                text.innerText = '正在处理...';
             } else {
                 btn.disabled = false;
-                btn.innerText = '提取并翻译字幕 (中文)';
+                icon.className = 'fa-solid fa-wand-magic-sparkles';
+                text.innerText = '开始处理';
             }
         }
 
         function appendLog(message) {
             const container = document.getElementById('logContainer');
+            
+            // Format time
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                            now.getMinutes().toString().padStart(2, '0') + ':' + 
+                            now.getSeconds().toString().padStart(2, '0');
+
             const div = document.createElement('div');
-            div.className = 'log-entry';
-            div.innerText = message;
+            div.className = 'log-entry flex gap-2 animate-[fadeIn_0.3s_ease-out]';
+            
+            // Simple coloring logic based on keywords
+            let contentColor = 'text-gray-300';
+            let borderClass = 'border-l-2 border-gray-700';
+            
+            if (message.toLowerCase().includes('error') || message.toLowerCase().includes('失败')) {
+                contentColor = 'text-red-400';
+                borderClass = 'border-l-2 border-red-500';
+            } else if (message.toLowerCase().includes('warn') || message.toLowerCase().includes('警告')) {
+                contentColor = 'text-yellow-400';
+                borderClass = 'border-l-2 border-yellow-500';
+            } else if (message.toLowerCase().includes('success') || message.toLowerCase().includes('完成')) {
+                contentColor = 'text-green-400';
+                borderClass = 'border-l-2 border-green-500';
+            }
+
+            div.innerHTML = `
+                <span class="text-gray-600 select-none">[${timeStr}]</span>
+                <span class="${contentColor} ${borderClass} pl-2 flex-1 break-all">${message}</span>
+            `;
+            
             container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+            
+            // Auto scroll
+            requestAnimationFrame(() => {
+                container.scrollTop = container.scrollHeight;
+            });
         }
 
         function clearLogs() {
