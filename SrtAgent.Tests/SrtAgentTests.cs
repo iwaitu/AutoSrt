@@ -14,7 +14,7 @@ public sealed class SrtAgentTests
         _output = output;
 
         var apiKey = Environment.GetEnvironmentVariable("VLLM_API_KEY");
-        var endpoint = Environment.GetEnvironmentVariable("VLLM_ENDPOINT") ?? "https://chatservice.nngeo.net/v1/{1}";
+        var endpoint = Environment.GetEnvironmentVariable("VLLM_ENDPOINT") ?? "http://localhost:8000/v1/{1}";
         var model = Environment.GetEnvironmentVariable("VLLM_MODEL") ?? "qwen3-next-80b-a3b-instruct";
 
         if (!string.IsNullOrWhiteSpace(apiKey))
