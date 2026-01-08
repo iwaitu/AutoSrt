@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="AutoSrt/AutoSrt.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+  <Project Path="SrtAgent.Tests/SrtAgent.Tests.csproj" />
+  <Project Path="SrtAgent/SrtAgent.csproj" />
+</Solution>
