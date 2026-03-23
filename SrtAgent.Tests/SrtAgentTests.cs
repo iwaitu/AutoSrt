@@ -1,13 +1,13 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace SrtAgent.Tests;
 
 public sealed class SrtAgentTests
 {
-    private readonly IChatClient? _chatClient;
     private readonly ITestOutputHelper _output;
+    private IChatClient? _chatClient;
 
     public SrtAgentTests(ITestOutputHelper output)
     {

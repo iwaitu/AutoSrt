@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.AI.VllmChatClient.Gemma;
 using Microsoft.Extensions.AI.VllmChatClient.GptOss;
 
 namespace AutoSrt.Services;
@@ -14,16 +15,37 @@ internal static class VllmChatClientFactory
 
         endpoint = NormalizeEndpoint(endpoint);
 
-        // Keep mapping strict to the options exposed in UI.
-        if (model.StartsWith("qwen/", StringComparison.OrdinalIgnoreCase))
-        {
-            return new VllmQwen3NextChatClient(endpoint, apiKey, model);
-        }
 
-        if (model.Equals("openai/gpt-oss-120b", StringComparison.OrdinalIgnoreCase)
-            || model.Equals("openai/gpt-oss-20b", StringComparison.OrdinalIgnoreCase))
+        switch (model.ToLower())
         {
-            return new VllmGptOssChatClient(endpoint, apiKey, model);
+            case "qwen3.5-plus" or "qwen3-next-80b-a3b-instruct" or "qwen/qwen3.5-397b-a17b" or "qwen3.5-397b-a17b" or "qwen3.5-122b-a10b":
+                return  new VllmQwen3NextChatClient(endpoint, apiKey, model);
+            case "openai/gpt-oss-120b":
+                return new VllmGptOssChatClient(endpoint, apiKey, model);
+
+            case "openai/gpt-5.3-codex":
+                return new VllmOpenAiGptClient(endpoint, apiKey, model);
+
+            case "google/gemini-3.1-pro-preview" or "google/gemini-3-flash-preview" or "gemini-3.1-flash-lite-preview" or "gemini-3.1-pro-preview" or "gemini-3-flash-preview":
+                return new VllmGemini3ChatClient(endpoint, apiKey, model);
+
+            case "anthropic/claude-opus-4.6":
+                return new VllmClaudeChatClient(endpoint, apiKey, model);
+
+            case "kimi-k2.5":
+                return new VllmKimiK2ChatClient(endpoint, apiKey, model);
+
+            case "minimax-m2.5" or "minimax-m2.7" or "minimax/minimax-m2.7":
+                return new VllmMiniMaxChatClient(endpoint, apiKey, model);
+
+            case "glm-5" or "glm-4.7":
+                return new VllmGlmChatClient(endpoint, apiKey, model);
+
+            case "openai/gpt-oss-120b" or "openai/gpt-oss-20b":
+                return new VllmGptOssChatClient(endpoint, apiKey, model);
+
+            default:
+                return new VllmQwen3NextChatClient(endpoint, apiKey, model);
         }
 
         throw new NotSupportedException($"Unsupported model: {model}");
@@ -33,11 +55,14 @@ internal static class VllmChatClientFactory
     {
         endpoint = (endpoint ?? string.Empty).Trim();
 
-        // UI uses templates like https://openrouter.ai/api/v1/{1}
-        // The vLLM/OpenAI-compatible clients expect a concrete base URL (typically .../v1).
-        if (endpoint.Contains("{1}", StringComparison.Ordinal))
+        // Keep placeholder-style endpoints such as:
+        // https://dashscope.aliyuncs.com/compatible-mode/v1/{1}
+        // https://openrouter.ai/api/v1/{1}
+        // Some clients use the placeholder to compose the final chat path.
+        if (endpoint.Contains("{1}", StringComparison.Ordinal)
+            || endpoint.Contains("{0}", StringComparison.Ordinal))
         {
-            endpoint = endpoint.Replace("{1}", string.Empty, StringComparison.Ordinal);
+            return endpoint;
         }
 
         endpoint = endpoint.TrimEnd('/');
