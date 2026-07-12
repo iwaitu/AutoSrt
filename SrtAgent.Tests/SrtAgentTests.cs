@@ -1,5 +1,6 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics;
 using Xunit;
 
 namespace SrtAgent.Tests;
@@ -40,13 +41,45 @@ public sealed class SrtAgentTests
         );
 
         var agent = new SrtTranslator(client, NullLogger.Instance);
+        var progressUpdates = new List<int>();
 
-        var output = await agent.TranslateSrtAsync(input, new SrtTranslator.TranslationOptions(TargetLanguage: "中文", BatchSize: 10, BatchDelayMs: 0));
+        var output = await agent.TranslateSrtAsync(
+            input,
+            new SrtTranslator.TranslationOptions(TargetLanguage: "涓枃", BatchSize: 1, BatchDelayMs: 0),
+            (percent, _) => progressUpdates.Add(percent));
 
         Assert.Contains("1", output);
         Assert.Contains("00:00:01,000 --> 00:00:02,000", output);
-        Assert.Contains("你好", output);
-        Assert.Contains("世界", output);
+        Assert.Contains("浣犲ソ", output);
+        Assert.Contains("涓栫晫", output);
+        var requestOptions = Assert.IsType<VllmChatOptions>(client.LastOptions);
+        Assert.False(requestOptions.ThinkingEnabled);
+        Assert.False(requestOptions.EnableSkills);
+        Assert.Equal(2000, requestOptions.MaxOutputTokens);
+        Assert.Equal([0, 50, 100, 100], progressUpdates);
+    }
+
+    [Fact]
+    public async Task TranslateSrtAsync_WhenRequestTimesOut_RetriesAndDoesNotHang()
+    {
+        const string input = "1\n00:00:01,000 --> 00:00:02,000\nHello\n";
+        var client = new HangingChatClient();
+        var agent = new SrtTranslator(client, NullLogger.Instance);
+        var stopwatch = Stopwatch.StartNew();
+
+        var output = await agent.TranslateSrtAsync(
+            input,
+            new SrtTranslator.TranslationOptions(
+                TargetLanguage: "涓枃",
+                MaxRetries: 2,
+                RetryBaseDelayMs: 0,
+                BatchDelayMs: 0,
+                RequestTimeoutMs: 20));
+
+        stopwatch.Stop();
+        Assert.Equal(2, client.CallCount);
+        Assert.Contains("Hello", output);
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
     }
 
     [Fact]
@@ -94,7 +127,7 @@ public sealed class SrtAgentTests
 
         // Keep it small/fast and avoid delays.
         var options = new SrtTranslator.TranslationOptions(
-            TargetLanguage: "中文",
+            TargetLanguage: "涓枃",
             BatchSize: 2,
             ContextSize: 0,
             Temperature: 0.0f,
@@ -131,8 +164,11 @@ public sealed class SrtAgentTests
 
         public object? Metadata => null;
 
+        public ChatOptions? LastOptions { get; private set; }
+
         public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
+            LastOptions = options;
             var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, _responseText));
             return Task.FromResult(response);
         }
@@ -140,6 +176,38 @@ public sealed class SrtAgentTests
         public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             // Not used by SrtAgent; keep a minimal implementation for interface compliance.
+            await Task.CompletedTask;
+            yield break;
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class HangingChatClient : IChatClient
+    {
+        public int CallCount { get; private set; }
+
+        public object? Metadata => null;
+
+        public async Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new UnreachableException();
+        }
+
+        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
             await Task.CompletedTask;
             yield break;
         }

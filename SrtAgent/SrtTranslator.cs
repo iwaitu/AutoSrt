@@ -26,7 +26,8 @@ public sealed class SrtTranslator
         int MaxOutputTokens = 2000,
         int MaxRetries = 3,
         int RetryBaseDelayMs = 1000,
-        int BatchDelayMs = 500);
+        int BatchDelayMs = 500,
+        int RequestTimeoutMs = 60_000);
 
     public async Task<string> TranslateSrtAsync(
         string srtContent,
@@ -75,7 +76,9 @@ public sealed class SrtTranslator
             cancellationToken.ThrowIfCancellationRequested();
 
             var batch = subtitles.Skip(batchIndex * batchSize).Take(batchSize).ToList();
-            var progressPercent = (int)((double)(batchIndex + 1) / totalBatches * 100);
+            // Ceiling ensures a completed first batch is visible as progress even
+            // for long subtitle files with more than 100 batches.
+            var progressPercent = (int)Math.Ceiling((double)(batchIndex + 1) / totalBatches * 100);
 
             _logger.LogInformation($"Translating batch {batchIndex + 1}/{totalBatches} ({progressPercent}%)");
 
@@ -96,7 +99,10 @@ public sealed class SrtTranslator
                         new(ChatRole.User, prompt)
                     };
 
-                    var response = await GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+                    using var requestCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    requestCts.CancelAfter(Math.Max(1, options.RequestTimeoutMs));
+
+                    var response = await GetResponseAsync(messages, options, requestCts.Token).ConfigureAwait(false);
                     var translatedText = response.Text;
                     allOutputTokens += response.Usage?.OutputTokenCount ?? 0;
                     allInputTokens += response.Usage?.InputTokenCount ?? 0;
@@ -112,6 +118,26 @@ public sealed class SrtTranslator
                     {
                         var rate = batch.Count == 0 ? 0d : (double)translatedBatch.Count / batch.Count;
                         _logger.LogWarning($"Batch {batchIndex + 1} translation parse rate low: {rate:P}");
+                    }
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning(
+                        $"Translation batch {batchIndex + 1} timed out after {options.RequestTimeoutMs} ms " +
+                        $"(retry {retry + 1}/{options.MaxRetries}).");
+
+                    if (retry == options.MaxRetries - 1)
+                    {
+                        translatedBatch = batch;
+                        _logger.LogWarning($"Batch {batchIndex + 1} timed out; keeping original text.");
+                    }
+                    else
+                    {
+                        var delay = options.RetryBaseDelayMs * (retry + 1);
+                        if (delay > 0)
+                        {
+                            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                        }
                     }
                 }
                 catch (OperationCanceledException)
@@ -147,11 +173,10 @@ public sealed class SrtTranslator
 
             if (progress is not null)
             {
-                var bucket = (progressPercent / 5) * 5;
-                if (bucket >= lastReported + 5 || progressPercent == 100)
+                if (progressPercent > lastReported)
                 {
-                    lastReported = bucket;
-                    progress(bucket, $"batch {batchIndex + 1}/{totalBatches}");
+                    lastReported = progressPercent;
+                    progress(progressPercent, $"batch {batchIndex + 1}/{totalBatches}");
                 }
             }
         }
@@ -172,15 +197,22 @@ public sealed class SrtTranslator
         {
             var gptOssOptions = new GptOssChatOptions
             {
+                // GPT-OSS only exposes low/medium/high reasoning. Low is the
+                // smallest supported reasoning budget; it cannot be fully disabled.
                 ReasoningLevel = GptOssReasoningLevel.Low,
-                Temperature = 0.5f
+                Temperature = options.Temperature,
+                MaxOutputTokens = options.MaxOutputTokens
             };
 
             return _chatClient.GetResponseAsync(messages, gptOssOptions, cancellationToken);
         }
 
-        var chatOptions = new ChatOptions
+        // Translation is a deterministic, simple task. VllmChatOptions lets
+        // each model client emit its provider-specific no-thinking setting.
+        var chatOptions = new VllmChatOptions
         {
+            ThinkingEnabled = false,
+            EnableSkills = false,
             Temperature = options.Temperature,
             MaxOutputTokens = options.MaxOutputTokens
         };
