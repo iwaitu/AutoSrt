@@ -135,21 +135,33 @@
                         
                         <div class="group">
                             <label class="block text-xs font-medium text-gray-500 mb-1.5 ml-1 transition-colors group-hover:text-indigo-400">Model Name</label>
-                            <div class="relative">
+                            <div id="modelComboBox" class="relative">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fa-solid fa-brain text-gray-600 text-xs"></i>
                                 </div>
-                                <input type="text" id="model" list="modelOptions"
+                                <input type="text" id="model" autocomplete="off"
+                                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="modelOptions"
                                     class="w-full bg-gray-900/50 text-gray-200 text-sm rounded-lg border border-gray-700/50 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 block pl-9 pr-9 p-2.5 transition-all outline-none"
                                     placeholder="输入或选择模型名称"
                                     value="qwen/qwen3-next-80b-a3b-instruct">
-                                <datalist id="modelOptions">
-                                    <option value="qwen/qwen3-next-80b-a3b-instruct"></option>
-                                    <option value="openai/gpt-oss-120b"></option>
-                                    <option value="openai/gpt-oss-20b"></option>
-                                </datalist>
-                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <button type="button" id="modelDropdownButton" aria-label="展开模型列表"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center rounded-r-lg text-gray-600 hover:text-indigo-400 focus:text-indigo-400 outline-none"
+                                    onclick="toggleModelDropdown()">
                                     <i class="fa-solid fa-chevron-down text-gray-600 text-xs"></i>
+                                </button>
+                                <div id="modelOptions" role="listbox"
+                                    class="hidden absolute z-50 left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto custom-scrollbar rounded-lg border border-gray-700 bg-gray-900 shadow-2xl py-1">
+                                    <button type="button" role="option" data-model="qwen/qwen3-next-80b-a3b-instruct" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">qwen/qwen3-next-80b-a3b-instruct</button>
+                                    <button type="button" role="option" data-model="qwen/qwen3.5-397b-a17b" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">qwen/qwen3.5-397b-a17b</button>
+                                    <button type="button" role="option" data-model="openai/gpt-oss-120b" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">openai/gpt-oss-120b</button>
+                                    <button type="button" role="option" data-model="openai/gpt-oss-20b" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">openai/gpt-oss-20b</button>
+                                    <button type="button" role="option" data-model="openai/gpt-5.3-codex" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">openai/gpt-5.3-codex</button>
+                                    <button type="button" role="option" data-model="google/gemini-3.1-pro-preview" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">google/gemini-3.1-pro-preview</button>
+                                    <button type="button" role="option" data-model="anthropic/claude-opus-4.6" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">anthropic/claude-opus-4.6</button>
+                                    <button type="button" role="option" data-model="deepseek-v3.2" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">deepseek-v3.2</button>
+                                    <button type="button" role="option" data-model="glm-5" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">glm-5</button>
+                                    <button type="button" role="option" data-model="kimi-k2.5" class="model-option w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-indigo-500/20 hover:text-white">kimi-k2.5</button>
+                                    <div id="modelNoResults" class="hidden px-3 py-2 text-xs text-gray-500">没有匹配项，可直接使用输入的模型名称</div>
                                 </div>
                             </div>
                         </div>
@@ -236,6 +248,62 @@
 
     <!-- Logic -->
     <script>
+        const modelComboBox = document.getElementById('modelComboBox');
+        const modelInput = document.getElementById('model');
+        const modelOptions = document.getElementById('modelOptions');
+        const modelNoResults = document.getElementById('modelNoResults');
+
+        function setModelDropdownOpen(open) {
+            modelOptions.classList.toggle('hidden', !open);
+            modelInput.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        function filterModelOptions() {
+            const filter = modelInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            document.querySelectorAll('.model-option').forEach(option => {
+                const visible = !filter || option.dataset.model.toLowerCase().includes(filter);
+                option.classList.toggle('hidden', !visible);
+                if (visible) visibleCount++;
+            });
+
+            modelNoResults.classList.toggle('hidden', visibleCount !== 0);
+        }
+
+        function toggleModelDropdown() {
+            const opening = modelOptions.classList.contains('hidden');
+            if (opening) filterModelOptions();
+            setModelDropdownOpen(opening);
+            modelInput.focus();
+        }
+
+        document.querySelectorAll('.model-option').forEach(option => {
+            option.addEventListener('click', () => {
+                modelInput.value = option.dataset.model;
+                setModelDropdownOpen(false);
+                modelInput.focus();
+            });
+        });
+
+        modelInput.addEventListener('input', () => {
+            filterModelOptions();
+            setModelDropdownOpen(true);
+        });
+
+        modelInput.addEventListener('keydown', event => {
+            if (event.key === 'Escape') setModelDropdownOpen(false);
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setModelDropdownOpen(true);
+                document.querySelector('.model-option:not(.hidden)')?.focus();
+            }
+        });
+
+        document.addEventListener('click', event => {
+            if (!modelComboBox.contains(event.target)) setModelDropdownOpen(false);
+        });
+
         function selectVideo() {
             window.location.href = 'autosrt://pickVideo';
         }

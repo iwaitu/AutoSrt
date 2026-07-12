@@ -1,6 +1,7 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.VllmChatClient.Gemma;
 using Microsoft.Extensions.AI.VllmChatClient.GptOss;
+using Microsoft.Extensions.AI.VllmChatClient.Mimo;
 
 namespace AutoSrt.Services;
 
@@ -14,41 +15,61 @@ internal static class VllmChatClientFactory
         }
 
         endpoint = NormalizeEndpoint(endpoint);
+        model = model.Trim();
+        var modelName = GetModelName(model);
 
-
-        switch (model.ToLower())
+        return modelName switch
         {
-            case "qwen3.5-plus" or "qwen3-next-80b-a3b-instruct" or "qwen/qwen3.5-397b-a17b" or "qwen3.5-397b-a17b" or "qwen3.5-122b-a10b":
-                return  new VllmQwen3NextChatClient(endpoint, apiKey, model);
-            case "openai/gpt-oss-120b":
-                return new VllmGptOssChatClient(endpoint, apiKey, model);
+            _ when modelName.StartsWith("gpt-oss-", StringComparison.Ordinal) =>
+                new VllmGptOssChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("gpt-", StringComparison.Ordinal) =>
+                new VllmOpenAiGptClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("claude-", StringComparison.Ordinal) =>
+                new VllmClaudeChatClient(endpoint, apiKey, model),
+            _ when modelName.Contains("nemotron-3", StringComparison.Ordinal) =>
+                new VllmNemotronChatClient(endpoint, apiKey, model),
 
-            case "openai/gpt-5.3-codex":
-                return new VllmOpenAiGptClient(endpoint, apiKey, model);
+            _ when modelName.StartsWith("qwen3-next-", StringComparison.Ordinal)
+                || modelName.StartsWith("qwen3.5", StringComparison.Ordinal)
+                || modelName.StartsWith("qwen3.6", StringComparison.Ordinal)
+                || modelName.StartsWith("qwen3-vl-", StringComparison.Ordinal) =>
+                new VllmQwen3NextChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("qwen3", StringComparison.Ordinal) =>
+                new VllmQwen3ChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("qwq", StringComparison.Ordinal) =>
+                new VllmQwqChatClient(endpoint, apiKey, model),
 
-            case "google/gemini-3.1-pro-preview" or "google/gemini-3-flash-preview" or "gemini-3.1-flash-lite-preview" or "gemini-3.1-pro-preview" or "gemini-3-flash-preview":
-                return new VllmGemini3ChatClient(endpoint, apiKey, model);
+            _ when modelName.StartsWith("gemma-4", StringComparison.Ordinal)
+                || modelName.StartsWith("gemma4", StringComparison.Ordinal) =>
+                new VllmGemma4ChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("gemma-3", StringComparison.Ordinal)
+                || modelName.StartsWith("gemma3", StringComparison.Ordinal) =>
+                new VllmGemmaChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("gemini-3", StringComparison.Ordinal) =>
+                new VllmGemini3ChatClient(endpoint, apiKey, model),
 
-            case "anthropic/claude-opus-4.6":
-                return new VllmClaudeChatClient(endpoint, apiKey, model);
+            _ when modelName.StartsWith("deepseek-r1", StringComparison.Ordinal) =>
+                new VllmDeepseekR1ChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("deepseek-v3", StringComparison.Ordinal)
+                || modelName.StartsWith("deepseek-v4", StringComparison.Ordinal) =>
+                new VllmDeepseekV3ChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("kimi-k2", StringComparison.Ordinal) =>
+                new VllmKimiK2ChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("glm-", StringComparison.Ordinal) =>
+                new VllmGlmChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("minimax-m2", StringComparison.Ordinal) =>
+                new VllmMiniMaxChatClient(endpoint, apiKey, model),
+            _ when modelName.StartsWith("mimo-v2-", StringComparison.Ordinal) =>
+                new VllmMimoChatClient(endpoint, apiKey, model),
 
-            case "kimi-k2.5":
-                return new VllmKimiK2ChatClient(endpoint, apiKey, model);
+            _ => throw new NotSupportedException($"Unsupported model: {model}")
+        };
+    }
 
-            case "minimax-m2.5" or "minimax-m2.7" or "minimax/minimax-m2.7":
-                return new VllmMiniMaxChatClient(endpoint, apiKey, model);
-
-            case "glm-5" or "glm-4.7":
-                return new VllmGlmChatClient(endpoint, apiKey, model);
-
-            case "openai/gpt-oss-120b" or "openai/gpt-oss-20b":
-                return new VllmGptOssChatClient(endpoint, apiKey, model);
-
-            default:
-                return new VllmQwen3NextChatClient(endpoint, apiKey, model);
-        }
-
-        throw new NotSupportedException($"Unsupported model: {model}");
+    private static string GetModelName(string model)
+    {
+        var separatorIndex = model.LastIndexOf('/');
+        return model[(separatorIndex + 1)..].ToLowerInvariant();
     }
 
     private static string NormalizeEndpoint(string endpoint)

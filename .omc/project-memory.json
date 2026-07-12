@@ -1,0 +1,120 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1783883193437,
+  "projectRoot": "d:\\codeup\\AutoSrt",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "artifacts": {
+      "path": "artifacts",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1783883193426,
+      "keyFiles": [
+        "win.zip"
+      ]
+    },
+    "AutoSrt": {
+      "path": "AutoSrt",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1783883193427,
+      "keyFiles": [
+        "App.xaml",
+        "App.xaml.cs",
+        "AppShell.xaml",
+        "AppShell.xaml.cs",
+        "AutoSrt.csproj"
+      ]
+    },
+    "SrtAgent": {
+      "path": "SrtAgent",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1783883193427,
+      "keyFiles": [
+        "SrtAgent.csproj",
+        "SrtExportor.cs",
+        "SrtTranslator.cs"
+      ]
+    },
+    "SrtAgent.Tests": {
+      "path": "SrtAgent.Tests",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1783883193427,
+      "keyFiles": [
+        "SrtAgent.Tests.csproj",
+        "SrtAgentTests.cs",
+        "SrtExportorTests.cs",
+        "TestAssets.cs"
+      ]
+    },
+    "TestResults": {
+      "path": "TestResults",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1783883193427,
+      "keyFiles": []
+    },
+    "tools": {
+      "path": "tools",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1783883193427,
+      "keyFiles": [
+        "trim-win-langs.ps1"
+      ]
+    },
+    "AutoSrt\\bin": {
+      "path": "AutoSrt\\bin",
+      "purpose": "Executable scripts",
+      "fileCount": 0,
+      "lastAccessed": 1783883193428,
+      "keyFiles": []
+    },
+    "SrtAgent\\bin": {
+      "path": "SrtAgent\\bin",
+      "purpose": "Executable scripts",
+      "fileCount": 0,
+      "lastAccessed": 1783883193429,
+      "keyFiles": []
+    },
+    "SrtAgent.Tests\\bin": {
+      "path": "SrtAgent.Tests\\bin",
+      "purpose": "Executable scripts",
+      "fileCount": 0,
+      "lastAccessed": 1783883193430,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}
